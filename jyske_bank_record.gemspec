@@ -7,6 +7,6 @@ Gem::Specification.new do |s|
   s.authors = ['Thomas B Homburg']
   s.email = 'thomas@houseofcode.io'
   s.files = ['lib/jyske_bank_record.rb']
-  s.homepage = 'https://github.com/houseofcode/jyske_bank_record.rb'
+  s.homepage = 'https://github.com/house-of-code/jyske_bank_record.rb'
   s.license = 'MIT'
 end
