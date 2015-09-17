@@ -1,5 +1,5 @@
 Gem::Specification.new do |s|
-  s.name = 'Jyske Bank Record'
+  s.name = 'jyske_bank_record'
   s.version = '0.0.0'
   s.date = '2015-09-17'
   s.summary = 'Jyske Bank online bank records'
