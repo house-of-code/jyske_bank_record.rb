@@ -96,15 +96,7 @@ module JyskeBankRecord
       end
     end
 
-    Recipient = Struct.new(:registration_number, :account_number, :name, :address, :address2, :zip_code, :city) do
-      def encode(encoding)
-        each_pair do |key, value|
-          if value.respond_to?(:encode)
-            self[key] = value.encode(encoding)
-          end
-        end
-      end
-    end
+    Recipient = Struct.new(:registration_number, :account_number, :name, :address, :address2, :zip_code, :city)
 
     PaymentRecord = Struct.new(:processing_date, :amount, :sender_account_number, :recipient, :entry_text, :reference, :notice) do
       def fields
@@ -159,15 +151,6 @@ module JyskeBankRecord
       end
 
       def write(stream)
-        # Encode fields
-        each_pair do |key, value|
-          if value.respond_to?(:encode)
-            self[key] = value.encode(Encoding::CP1252)
-          end
-        end
-
-        recipient.encode(Encoding::CP1252)
-
         Record.write_fields(stream, fields)
       end
     end
