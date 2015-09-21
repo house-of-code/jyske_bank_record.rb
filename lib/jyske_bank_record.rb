@@ -27,139 +27,137 @@ module JyskeBankRecord
     CHEQUE = '2'
   end
 
-  module Record
-    NEWLINE = "\r\n"
+  NEWLINE = "\r\n"
 
-    # Format a string of bank records, with correct encoding
-    def self.format_records(records)
-      self.stream_records(records).string
+  # Format a string of bank records, with correct encoding
+  def self.format_records(records)
+    return '' if records.empty?
+    self.stream_records(records).string
+  end
+
+  # Produce a stream containing a formatted bank record file
+  def self.stream_records(records)
+    return if records.empty?
+
+    stream = StringIO.new
+
+    # Set stream output to cp1252
+    stream.set_encoding(Encoding::CP1252)
+
+    records.each do |r|
+      r.write(stream)
+      stream << NEWLINE
     end
 
-    # Produce a stream containing a formatted bank record file
-    def self.stream_records(records)
-      return if records.empty?
+    stream
+  end
 
-      stream = StringIO.new
+  def self.write_fields(stream, fields)
+    return if fields.empty?
+    stream << '"'
+    stream << fields.first
+    stream << '"'
 
-      # Set stream output to cp1252
-      stream.set_encoding(Encoding::CP1252)
-
-      records.each do |r|
-        r.write(stream)
-        stream << NEWLINE
-      end
-
-      stream
-    end
-
-    def self.write_fields(stream, fields)
-      return if fields.empty?
+    fields.drop(1).each do |f|
+      stream << ','
       stream << '"'
-      stream << fields.first
+      stream << f
       stream << '"'
+    end
+  end
 
-      fields.drop(1).each do |f|
-        stream << ','
-        stream << '"'
-        stream << f
-        stream << '"'
-      end
+  PaymentStartRecord = Struct.new(:creation_date) do
+    def fields
+      [
+        'IB000000000000',
+        creation_date.strftime(DATE_FORMAT),
+        ' ' * 90,
+        ' ' * 255,
+        ' ' * 255,
+        ' ' * 255,
+      ]
     end
 
-    PaymentStartRecord = Struct.new(:creation_date) do
-      def fields
-        [
-          'IB000000000000',
-          creation_date.strftime(DATE_FORMAT),
-          ' ' * 90,
-          ' ' * 255,
-          ' ' * 255,
-          ' ' * 255,
-        ]
-      end
+    def write(stream)
+      JyskeBankRecord.write_fields(stream, fields)
+    end
+  end
 
-      def write(stream)
-        Record.write_fields(stream, fields)
-      end
+  PaymentEndRecord = Struct.new(:creation_date, :transactions) do
+    def fields
+      [
+        'IB999999999999',
+        creation_date.strftime(DATE_FORMAT),
+        transactions.length.to_s.rjust(6, '0'),
+        transactions.map(&:amount).reduce(:+).to_s.rjust(13, '0') + '+',
+        ' ' * 64,
+        ' ' * 255,
+        ' ' * 255,
+        ' ' * 255,
+      ]
     end
 
-    PaymentEndRecord = Struct.new(:creation_date, :transactions) do
-      def fields
-        [
-          'IB999999999999',
-          creation_date.strftime(DATE_FORMAT),
-          transactions.length.to_s.rjust(6, '0'),
-          transactions.map(&:amount).reduce(:+).to_s.rjust(13, '0') + '+',
-          ' ' * 64,
-          ' ' * 255,
-          ' ' * 255,
-          ' ' * 255,
-        ]
-      end
+    def write(stream)
+      JyskeBankRecord.write_fields(stream, fields)
+    end
+  end
 
-      def write(stream)
-        Record.write_fields(stream, fields)
-      end
+  Recipient = Struct.new(:registration_number, :account_number, :name, :address, :address2, :zip_code, :city)
+
+  PaymentRecord = Struct.new(:processing_date, :amount, :sender_account_number, :recipient, :entry_text, :reference, :notice) do
+    def fields
+      start_fields = [
+          Type::DOMESTIC_RECORD,
+          '0001',
+          processing_date.strftime(DATE_FORMAT),
+          amount.abs.to_s.rjust(13, '0') + (amount && '+' || '-'),
+          Currency::DKK,
+          AccountType::BANK,
+          sender_account_number.rjust(15, '0'), # sender account number
+          PaymentType::TRANSFER,
+          recipient.registration_number,
+          recipient.account_number,
+          NoticeType::ATTACHED,
+          entry_text.ljust(35),
+          recipient.name.ljust(32),
+          recipient.address.ljust(32),
+          recipient.address2.ljust(32),
+          recipient.zip_code,
+          recipient.city.ljust(32),
+          reference.ljust(35),
+      ]
+      end_fields = [
+          ' ',
+          ' ' * 215
+      ]
+
+      start_fields + notice_chunks.map { |c| c.ljust(35) } + end_fields
     end
 
-    Recipient = Struct.new(:registration_number, :account_number, :name, :address, :address2, :zip_code, :city)
+    # Chunk notice over
+    def notice_chunks
+      # Split to lines
+      notice_lines = notice.strip().gsub("\r", '').split("\n")
+      notice_lines.flat_map do |line|
+        encoding = Encoding::CP1252
+        line = line.encode(encoding)
 
-    PaymentRecord = Struct.new(:processing_date, :amount, :sender_account_number, :recipient, :entry_text, :reference, :notice) do
-      def fields
-        start_fields = [
-            Type::DOMESTIC_RECORD,
-            '0001',
-            processing_date.strftime(DATE_FORMAT),
-            amount.abs.to_s.rjust(13, '0') + (amount && '+' || '-'),
-            Currency::DKK,
-            AccountType::BANK,
-            sender_account_number.rjust(15, '0'), # sender account number
-            PaymentType::TRANSFER,
-            recipient.registration_number,
-            recipient.account_number,
-            NoticeType::ATTACHED,
-            entry_text.ljust(35),
-            recipient.name.ljust(32),
-            recipient.address.ljust(32),
-            recipient.address2.ljust(32),
-            recipient.zip_code,
-            recipient.city.ljust(32),
-            reference.ljust(35),
-        ]
-        end_fields = [
-            ' ',
-            ' ' * 215
-        ]
-
-        start_fields + notice_chunks.map { |c| c.ljust(35) } + end_fields
-      end
-
-      # Chunk notice over
-      def notice_chunks
-        # Split to lines
-        notice_lines = notice.strip().gsub("\r", '').split("\n")
-        notice_lines.flat_map do |line|
-          encoding = Encoding::CP1252
-          line = line.encode(encoding)
-
-          # Chunk to 35 chars
-          arr = []
-          until line.empty?
-            arr << line.slice!(0..34)
-          end
-          arr
+        # Chunk to 35 chars
+        arr = []
+        until line.empty?
+          arr << line.slice!(0..34)
         end
-
-        if notice_lines.length < 9
-          notice_lines = notice_lines + (Array.new(9-notice_lines.length) { '' })
-        end
-        notice_lines
+        arr
       end
 
-      def write(stream)
-        Record.write_fields(stream, fields)
+      if notice_lines.length < 9
+        notice_lines = notice_lines + (Array.new(9-notice_lines.length) { '' })
       end
+      notice_lines
     end
 
+    def write(stream)
+      JyskeBankRecord.write_fields(stream, fields)
+    end
   end
 end
