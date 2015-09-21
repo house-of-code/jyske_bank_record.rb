@@ -30,6 +30,12 @@ module JyskeBankRecord
   module Record
     NEWLINE = "\r\n"
 
+    # Format a string of bank records, with correct encoding
+    def self.format_records(records)
+      self.stream_records(records).string
+    end
+
+    # Produce a stream containing a formatted bank record file
     def self.stream_records(records)
       return if records.empty?
 

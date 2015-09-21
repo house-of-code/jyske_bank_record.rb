@@ -53,7 +53,7 @@ module JyskeBankRecord
         end
       end
 
-      it 'should write a bank record file with transactions' do
+      it 'should stream a bank record file with transactions' do
         date = Date.new(2015, 9, 17)
         start_record = PaymentStartRecord.new date
 
@@ -98,10 +98,8 @@ module JyskeBankRecord
 
         records = [start_record] + transactions + [end_record]
 
-        stream = Record.stream_records(records)
-
         File.open(File.join(__dir__, "files", "2_records"), encoding: Encoding::CP1252) do |f|
-          left = stream.string
+          left = Record.format_records(records)
           right = f.read
           expect(left.length).to eq(right.length)
           expect(left).to eq(right)
@@ -109,7 +107,7 @@ module JyskeBankRecord
       end
 
       describe PaymentRecord do
-        it 'should 9 produce notice chunks' do
+        it 'should produce 9 notice chunks' do
           record = PaymentRecord.new(
               Date.new(2015, 9, 25),
               747,
