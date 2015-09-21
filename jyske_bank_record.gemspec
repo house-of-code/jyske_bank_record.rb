@@ -1,7 +1,7 @@
 Gem::Specification.new do |s|
   s.name = 'jyske_bank_record'
   s.rubyforge_project = 'jyske_bank_record'
-  s.version = '0.0.0'
+  s.version = '0.0.1'
   s.date = '2015-09-17'
   s.summary = 'Jyske Bank online bank records'
   s.description = 'Generate online bank records for use with jyske bank.'
