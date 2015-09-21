@@ -1,6 +1,10 @@
 # JYSKE BANK RECORDS
 
-ruby library for generating 
+ruby library for generating bank record files for Jyske Bank
+
+# TODO
+
+- Validate inputs (length, etc)
 
 # LICENSE
 
