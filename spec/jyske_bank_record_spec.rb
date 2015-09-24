@@ -69,9 +69,9 @@ module JyskeBankRecord
               zip_code: '5000',
               city: 'Odense',
             ),
-            'posteringstekst 1',
-            'eget bilags-nr',
-            (1..9).map{ |n| "advisering #{n}" }.join("\n")
+            entry_text: 'posteringstekst 1',
+            reference: 'eget bilags-nr',
+            notice: (1..9).map{ |n| "advisering #{n}" }.join("\n")
         ),
         PaymentRecord.new(
             Date.new(2015, 9, 25),
@@ -86,9 +86,9 @@ module JyskeBankRecord
                 zip_code: '6000',
                 city: 'Kolding',
             ),
-            'posteringstekst 2',
-            'eget bilags-nr 2',
-            ''
+            entry_text: 'posteringstekst 2',
+            reference: 'eget bilags-nr 2',
+            notice: ''
         ),
       ]
 
@@ -103,7 +103,5 @@ module JyskeBankRecord
         expect(left).to eq(right)
       end
     end
-
-
   end
 end

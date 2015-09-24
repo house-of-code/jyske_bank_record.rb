@@ -146,7 +146,44 @@ module JyskeBankRecord
     end
   end
 
-  PaymentRecord = Struct.new(:processing_date, :amount, :sender_account_number, :recipient, :entry_text, :reference, :notice) do
+  class PaymentRecord
+    include ActiveModel::Validations
+    include JyskeBankRecord::EncodeCp1252AndSet
+
+    @@parameters = [:sender_account_number, :entry_text, :reference, :notice]
+
+    attr_reader *@@parameters
+    attr_reader :processing_date, :amount, :recipient
+
+    validates_presence_of *@@parameters, {allow_blank: true, allow_nil: false}
+    validates_each :processing_date do |record, attr, value|
+      record.errors.add(attr, 'must respond to strftime') unless value.respond_to? :strftime
+    end
+    validates_numericality_of :amount
+    validates_each :amount do |record, attr, value|
+      record.errors.add(attr, 'must be a Fixnum') unless value.instance_of? Fixnum
+    end
+    validates_length_of :sender_account_number, is: 15
+    validates_length_of :entry_text, :reference, maximum: 35
+
+    # Validate notice for 9 lines, each less than or equal to 35 chars
+    validates_each :notice do |record, attr, value|
+      lines = value.lines
+      record.errors.add(attr, 'must have a maximum of 9 lines') if lines.length > 9
+      lines.each_with_index do |line, i|
+        if line.length > 35
+          record.errors.add(attr, "must have lines at most 35 (cp1252) chars of length, line #{i+1} is #{line.length} chars long")
+        end
+      end
+    end
+
+    def initialize(processing_date, amount, sender_account_number, recipient, entry_text: '', reference: '', notice: '')
+      encode_and_set binding, @@parameters
+      @processing_date = processing_date
+      @amount = amount
+      @recipient = recipient
+    end
+
     def fields
       start_fields = [
           Type::DOMESTIC_RECORD,
