@@ -1,3 +1,5 @@
+require 'active_model'
+
 module JyskeBankRecord
   DATE_FORMAT = "%Y%m%d"
 
@@ -25,6 +27,18 @@ module JyskeBankRecord
     ATTACHED = '0'
     SEPARATE = '1'
     CHEQUE = '2'
+  end
+
+  # Encode variables given binding and set as instance variables
+  module EncodeCp1252AndSet
+    # @param [Binding] _binding binding for getting value of instance variables
+    # @param [Enumerable] names parameter names to encode and set
+      def encode_and_set(_binding, names)
+        names.each do |name|
+          value = _binding.local_variable_get name
+          instance_variable_set ('@' + name.to_s).to_sym, value.to_s.encode!(Encoding::CP1252)
+        end
+      end
   end
 
   NEWLINE = "\r\n"
@@ -69,12 +83,12 @@ module JyskeBankRecord
   PaymentStartRecord = Struct.new(:creation_date) do
     def fields
       [
-        'IB000000000000',
-        creation_date.strftime(DATE_FORMAT),
-        ' ' * 90,
-        ' ' * 255,
-        ' ' * 255,
-        ' ' * 255,
+          'IB000000000000',
+          creation_date.strftime(DATE_FORMAT),
+          ' ' * 90,
+          ' ' * 255,
+          ' ' * 255,
+          ' ' * 255,
       ]
     end
 
@@ -86,14 +100,14 @@ module JyskeBankRecord
   PaymentEndRecord = Struct.new(:creation_date, :transactions) do
     def fields
       [
-        'IB999999999999',
-        creation_date.strftime(DATE_FORMAT),
-        transactions.length.to_s.rjust(6, '0'),
-        transactions.map(&:amount).reduce(:+).to_s.rjust(13, '0') + '+',
-        ' ' * 64,
-        ' ' * 255,
-        ' ' * 255,
-        ' ' * 255,
+          'IB999999999999',
+          creation_date.strftime(DATE_FORMAT),
+          transactions.length.to_s.rjust(6, '0'),
+          transactions.map(&:amount).reduce(:+).to_s.rjust(13, '0') + '+',
+          ' ' * 64,
+          ' ' * 255,
+          ' ' * 255,
+          ' ' * 255,
       ]
     end
 
@@ -102,7 +116,35 @@ module JyskeBankRecord
     end
   end
 
-  Recipient = Struct.new(:registration_number, :account_number, :name, :address, :address2, :zip_code, :city)
+  # Recipient = Struct.new(:registration_number, :account_number, :name, :address, :address2, :zip_code, :city)
+  class Recipient
+    include ActiveModel::Validations
+    include JyskeBankRecord::EncodeCp1252AndSet
+
+    @@parameters = [:registration_number, :account_number, :name, :address, :address2, :zip_code, :city]
+
+    attr_reader *@@parameters
+
+    validates_presence_of *@@parameters, {allow_blank: true, allow_nil: false}
+    validates_length_of :registration_number, is: 4
+    validates :account_number, presence: true, length: {is: 10}
+
+    validates_length_of :name, :address, :address2, :city, {maximum: 32}
+    validates_length_of :zip_code, maximum: 4
+
+    # @param [String] registration_number 4 characters
+    # @param [String] account_number 10 characters
+    # @param [String] name
+    # @param [String] address
+    # @param [String] address2
+    # @param [String] zip_code
+    # @param [String] city
+    def initialize(registration_number, account_number, name: '', address: '', address2: '', zip_code: '', city: '')
+
+      # Encode and save parameters
+      encode_and_set binding, @@parameters
+    end
+  end
 
   PaymentRecord = Struct.new(:processing_date, :amount, :sender_account_number, :recipient, :entry_text, :reference, :notice) do
     def fields

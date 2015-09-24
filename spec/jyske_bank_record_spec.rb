@@ -1,9 +1,8 @@
 require 'spec_helper'
-require 'net/http'
 
 module JyskeBankRecord
   describe JyskeBankRecord do
-    it "should exist" do
+    it 'should exist' do
       expect { PaymentStartRecord }.not_to raise_error
     end
 
@@ -32,7 +31,7 @@ module JyskeBankRecord
       expect(str.length).to eq("t\xe6st".length)
       expect("t\xe6st").to eq("t\xe6st")
       expect(str.bytes).to eq("t\xe6st".bytes)
-      expect(str).to eq("tæst".encode(Encoding::CP1252))
+      expect(str).to eq('tæst'.encode(Encoding::CP1252))
     end
 
     it 'should write a bank record file' do
@@ -64,11 +63,11 @@ module JyskeBankRecord
             Recipient.new(
               '6666',
               '9876543210',
-              'nævn 1',
-              'modtager-adresse-1',
-              'modtager-adresse-2',
-              '5000',
-              'Odense',
+              name: 'nævn 1',
+              address: 'modtager-adresse-1',
+              address2: 'modtager-adresse-2',
+              zip_code: '5000',
+              city: 'Odense',
             ),
             'posteringstekst 1',
             'eget bilags-nr',
@@ -81,11 +80,11 @@ module JyskeBankRecord
             Recipient.new(
                 '7777',
                 '0123456789',
-                'navn 2',
-                'modtager-adresse-1-2',
-                'modtager-adresse-2-2',
-                '6000',
-                'Kolding',
+                name: 'navn 2',
+                address: 'modtager-adresse-1-2',
+                address2: 'modtager-adresse-2-2',
+                zip_code: '6000',
+                city: 'Kolding',
             ),
             'posteringstekst 2',
             'eget bilags-nr 2',
@@ -105,56 +104,6 @@ module JyskeBankRecord
       end
     end
 
-    describe PaymentRecord do
-      it 'should produce 9 notice chunks' do
-        record = PaymentRecord.new(
-            Date.new(2015, 9, 25),
-            747,
-            '123456789',
-            Recipient.new(
-                '6666',
-                '9876543210',
-                'nævn 1',
-                'modtager-adresse-1',
-                'modtager-adresse-2',
-                '5000',
-                'Odense',
-            ),
-            'posteringstekst 1',
-            'reference',
-            'notice'
-        )
 
-        chunks = record.notice_chunks
-
-        expect(chunks.length).to eq(9)
-        expect(chunks).to eq(['notice'] + (Array.new(8) { '' }))
-      end
-
-      it 'should write to a 896 byte record' do
-        record = PaymentRecord.new(
-            Date.new(2015, 9, 25),
-            747,
-            '123456789',
-            Recipient.new(
-                '6666',
-                '9876543210',
-                'nævn 1',
-                'modtager-adresse-1',
-                'modtager-adresse-2',
-                '5000',
-                'Odense',
-            ),
-            'posteringstekst 1',
-            'reference',
-            'notice'
-        )
-
-        stream = JyskeBankRecord.stream_records([record])
-
-        output = stream.string
-        expect(output.length).to eq(896)
-      end
-    end
   end
 end
